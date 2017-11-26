@@ -1,7 +1,13 @@
-#include <iostream>
+#include <stdio.h>
 #include <stdlib.h>
-#include <fstream>
+#include <string.h>
+#include <unistd.h>
+#include <fcntl.h>
 #include <ugpio/ugpio.h>
+#include <relay-exp.h>
+#include <iostream>
+#include <fstream>
+
 using namespace std;
 
 const int ticRate = 20;
@@ -21,23 +27,29 @@ void savePassword(){
 	}
 	
 	while(index<tics){
-		newPassword[index] = gpio_get_value(inputPin);				
+		if(gpio_get_value(inputPin)){
+			newPassFile << '1';
+		}
+		else{
+			newPassFile <<  '0';
+		}			
 		usleep(1000000/ticRate);
 		index++;
-	}
-	
-	newPassFile << newPassword;			
+	}	
+		
 	newPassFile.close();		
 
 
 }
 
 int main(int argc, char **argv, char **envp){
-	inputPin = atio(argv[1]);
+	inputPin = atoi(argv[1]);
 	while(true){
 		if(gpio_get_value(inputPin)){	
 			savePassword();
+			return 0;
 		}
+
 		usleep(1000000/ticRate);
 	}
 	return 0;
