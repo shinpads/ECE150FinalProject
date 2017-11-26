@@ -7,6 +7,8 @@
 #include <relay-exp.h>
 #include <iostream>
 #include <fstream>
+#include <string.h>
+#include <string>
 
 using namespace std;
 //GLOBAL VARIABLES-------------------------
@@ -14,24 +16,30 @@ const int ticrate = 20;
 const int passwordtime = 2;
 const int addr = 7;	
 const int passworderrorthreshold = 5;
-
+ofstream logfile;
+bool locked;
+//FUNCTION SIGNATURES------------------------
 void check(bool inputpassword[], bool realpassword[], int readpin);
 void getpassword(int readpin, bool realpassword[]);
 int geterror(bool inputpassword[] ,bool realpassword[]);
 void readPassword(bool* password);
-
+void toggleLock();
+string getTime();
+string log(string x);
 int main(int argc, char **argv, char **envp){
 	//INITAL VARIABLES-----------------------
 	bool inputpassword[ticrate*passwordtime];
 	bool realpassword[ticrate*passwordtime];
-	bool locked = true;
-	int gpioread, gpiowrite;
-	
-	gpiowrite = atoi(argv[1]);
-	gpioread = atoi(argv[2]);
 
+	locked = true;
+	
+	int gpiowrite = atoi(argv[1]);
+	int gpioread = atoi(argv[2]);
+	int motorpin = atoi(argv[3]);
 	//read realpassword from file
 	readPassword(realpassword);
+
+
 	//SETUP PINS-----------------------------	
 	relayDriverInit(addr);
 
@@ -44,16 +52,20 @@ int main(int argc, char **argv, char **envp){
 
 	//MAIN LOOP-----------------------------
 	while(true){
+
 		if(locked){
 			if(gpio_get_value(gpioread)){
 				check(inputpassword, realpassword, gpioread);
 			}
-		}else{
+		}
+
+		else{
 			//check for hold down
 			if(gpio_get_value(gpioread)){
 
 			}
 		}
+
 		usleep(1000000/ticrate);
 	}
 	//FREE PINS AND CLOSE FILES------------
@@ -67,6 +79,12 @@ int main(int argc, char **argv, char **envp){
 void check(bool inputpassword[], bool realpassword[], int readpin){
 	getpassword(readpin, inputpassword);
 	int val = geterror(inputpassword,realpassword);
+	if(val <= passworderrorthreshold){
+		//unlock
+	}
+	else{
+		//buzz
+	}
 
 }
 
@@ -111,4 +129,20 @@ void readPassword(bool password[]){
 		}
 	}	
 	passFile.close();
+}
+void toggleLock(){
+
+
+}
+string getTime(){
+	time_t rawTime; //type allows the representation of time
+	struct tm* timeFormatted; //structure the time into sec, min, hour...
+	time(&rawTime); //Get time and set the argument to that value
+	timeFormatted = localtime(&rawTime); //convert to our timezone
+	string convert = ((string)(asctime(timeFormatted)));//convert tm to string
+	convert = convert.substr(0, convert.size()-1); // removes the /n from the string 
+	return convert;
+}
+string log(string x){
+	logfile << getTime() +" "+ x;
 }
