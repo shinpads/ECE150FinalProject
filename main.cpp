@@ -50,7 +50,7 @@ void getpassword(int readpin, &int passwordinput[]){
 	}
 }
 
-int geterror(&int inputpassword &int realpassword){
+int geterror(int inputpassword[] ,int realpassword[]){
 	int tics = ticrate*passwordtime;
 	int error = 0;
 	while(tics--){
