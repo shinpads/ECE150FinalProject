@@ -40,7 +40,7 @@ int main(int argc, char **argv, char **envp){
 }
 
 
-void getpassword(int readpin, &int passwordinput[]){
+void getpassword(int readpin, int passwordinput[]){
 	int tics = ticrate*passwordtime;
 	int index = 0
 	while(index < tics){
