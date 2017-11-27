@@ -12,12 +12,12 @@
 
 using namespace std;
 //GLOBAL VARIABLES-------------------------
-const int ticrate = 20;
+const int ticrate = 40;
 const int passwordtime = 2;
 const int relayAddress = 7;	
-const int passworderrorthreshold = 5;
-bool inputpassword[200];
-bool realpassword[200];
+const int passworderrorthreshold = 15;
+bool inputpassword[ticrate*passwordtime+1];
+bool realpassword[ticrate*passwordtime+1];
 ofstream logfile;
 bool locked;
 //FUNCTION SIGNATURES------------------------
@@ -60,14 +60,13 @@ int main(int argc, char **argv, char **envp){
 				}
 				cout << inputie;
 				log(inputie);
-				return 0;
 			}
 		}
 
 		else{
 			//check for hold down
 			if(gpio_get_value(gpioread)){
-				return 0;
+				checkForOnes(gpioread);
 			}
 		}
 
