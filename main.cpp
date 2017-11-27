@@ -14,25 +14,27 @@ using namespace std;
 //GLOBAL VARIABLES-------------------------
 const int ticrate = 20;
 const int passwordtime = 2;
-const int addr = 7;	
+const int relayAddress = 7;	
 const int passworderrorthreshold = 5;
 ofstream logfile;
 bool locked;
 //FUNCTION SIGNATURES------------------------
 void check(bool inputpassword[], bool realpassword[], int readpin);
+void checkForOnes(bool inputPassword[],int readpin);
 void getpassword(int readpin, bool realpassword[]);
 int geterror(bool inputpassword[] ,bool realpassword[]);
 void readPassword(bool* password);
 void toggleLock();
 string getTime();
 string log(string x);
-int main(int argc, char **argv, char **envp){
+int main(int argc, char **argv, char **envp){	
 	//INITAL VARIABLES-----------------------
 	bool inputpassword[ticrate*passwordtime];
 	bool realpassword[ticrate*passwordtime];
 
 	locked = true;
-	
+	logfile.open("logfile.txt");
+	//log("INFO: Startn' the program.");
 	int gpiowrite = atoi(argv[1]);
 	int gpioread = atoi(argv[2]);
 	int motorpin = atoi(argv[3]);
@@ -41,7 +43,7 @@ int main(int argc, char **argv, char **envp){
 
 
 	//SETUP PINS-----------------------------	
-	relayDriverInit(addr);
+	relayDriverInit(relayAddress);
 
 	gpio_request(gpiowrite, NULL);
 	gpio_request(gpioread, NULL);
@@ -55,6 +57,8 @@ int main(int argc, char **argv, char **envp){
 
 		if(locked){
 			if(gpio_get_value(gpioread)){
+				log("INFO: Starting to record user input");
+				return 0;
 				check(inputpassword, realpassword, gpioread);
 			}
 		}
@@ -62,7 +66,7 @@ int main(int argc, char **argv, char **envp){
 		else{
 			//check for hold down
 			if(gpio_get_value(gpioread)){
-
+				return 0;
 			}
 		}
 
@@ -86,6 +90,18 @@ void check(bool inputpassword[], bool realpassword[], int readpin){
 		//buzz
 	}
 
+}
+void checkForOnes(bool inputPassword[],int readpin){
+	bool shouldLock = true;
+	getpassword(readpin,inputPassword);
+	for(int i=0; i<(ticrate*passwordtime) && shouldLock; i++){
+		if(!inputPassword[i]){
+			shouldLock = false;
+		}
+	}
+	if(shouldLock){
+		toggleLock();
+	}
 }
 
 //retreive password from pressure sensor
@@ -129,10 +145,7 @@ void readPassword(bool password[]){
 		}
 	}	
 	passFile.close();
-}
-void toggleLock(){
-
-
+	log(line);
 }
 string getTime(){
 	time_t rawTime; //type allows the representation of time
@@ -144,5 +157,11 @@ string getTime(){
 	return convert;
 }
 string log(string x){
-	logfile << getTime() +" "+ x;
+	logfile << getTime() +" "+ x +"\n";
+}
+void toggleLock(){
+	relaySetChannel(relayAddress, 0, 1);
+	sleep(1);
+	relaySetChannel(relayAddress, 0, 0);
+	locked = !locked;
 }
