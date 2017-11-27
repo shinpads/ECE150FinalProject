@@ -29,44 +29,51 @@ void readPassword();
 void toggleLock();
 string getTime();
 void log(string x);
-int main(int argc, char **argv, char **envp){	
+int main(int argc, char **argv, char **envp){		
 	locked = true;
+	//start log file
 	logfile.open("logfile.txt");
+	//read input for pin numbers
 	int gpiowrite = atoi(argv[1]);
 	int gpioread = atoi(argv[2]);
 	//read realpassword from file
 	readPassword();
-	//SETUP PINS-----------------------------	
+	//SETUP PINS-----------------------------
+
+	//setup relay	
 	relayDriverInit(relayAddress);
 
+	//request pins to be used
 	gpio_request(gpiowrite, NULL);
 	gpio_request(gpioread, NULL);
 
+	//set pin directions to input or output
 	gpio_direction_input(gpioread);
 	gpio_direction_output(gpiowrite,0);
-	bool val = 1;
+
+
 
 	//MAIN LOOP-----------------------------
 	while(true){
-		if(locked){
-			if(gpio_get_value(gpioread)){
-				log("INFO: Starting to record user input.");				
-				check(gpioread);
-				string inputie = "INFO: Recorded Input: ";
-				for(int i = 0; i<ticrate*passwordtime; i++){
-					if(inputpassword[i]){
-						inputie += "1";
-					}else{inputie+="0";}
-				}
-				cout << inputie;
-				log(inputie);
+		//check if there are any knocks
+		if(gpio_get_value(gpioread)){
+			//if knocks detetected, and door is locked, check if knock pattern matches
+			if(locked){
+					log("INFO: Starting to record user input.");				
+					check(gpioread);
+					string inputie = "INFO: Recorded Input: ";
+					for(int i = 0; i<ticrate*passwordtime; i++){
+						if(inputpassword[i]){
+							inputie += "1";
+						}else{inputie+="0";}
+					}
+					cout << inputie;
+					log(inputie);			
 			}
-		}
-
-		else{
-			//check for hold down
-			if(gpio_get_value(gpioread)){
-				checkForOnes(gpioread);
+			//if door is unlocked, then check if pressure is held for 2 seconds
+			else{
+				//check for hold down
+					checkForOnes(gpioread);
 			}
 		}
 
@@ -81,13 +88,16 @@ int main(int argc, char **argv, char **envp){
 
 //check if password is right
 void check(int readpin){
+	//read knock pattern into inputpassword array
 	getpassword(readpin);
+	//calculate error amount between realpassword and inputpassword
 	int val = geterror();
 	string valstr = to_string(val);	
 	log("INFO: erorr value: " + valstr);
-	
+	//check if error value is low enough to be considered same knocking pattern
 	if(val <= passworderrorthreshold){
 		log("INFO: Password matched.");
+		//toggle the door lock if pattern matches
 		toggleLock();
 	}
 	else{
@@ -105,6 +115,7 @@ void checkForOnes(int readpin){
 			shouldLock = false;
 		}
 	}
+	//if held down for 2 seconds, toggle the lock
 	if(shouldLock){
 		toggleLock();
 	}
@@ -114,7 +125,9 @@ void checkForOnes(int readpin){
 void getpassword(int readpin){
 	int tics = ticrate*passwordtime;
 	int index = 0;
+	//read pressure sensor for 2 seconds at a rate of ticrate
 	while(index < tics){
+		//save inputted password to inputpassword array
 		inputpassword[index] = gpio_get_value(readpin);
 		usleep(1000000/ticrate);
 		index++;
@@ -126,7 +139,7 @@ int geterror(){
 	int tics = ticrate*passwordtime;
 	int error = 0;
 	int index = 0;
-	
+	//error is calulated as sum of indexes that dont match between inputpassword and realpassword
 	while(index < tics){
 		if (inputpassword[index] != realpassword[index]){
 			error++;
@@ -146,6 +159,7 @@ void readPassword(){
 	ifstream passFile;
 	passFile.open(filename);
 	getline(passFile,line);
+	//read realpassword from newPasword.txt (file created from savepassword.cpp) and save it into realpassword array
 	for(int i=0; i<maxLineLength; i++){
 		realpassword[i] = (bool)(line.at(i)-48);
 	}
@@ -153,6 +167,7 @@ void readPassword(){
 	passFile.close();
 	log(line);
 }
+//getTime function for the log file
 string getTime(){
 	time_t rawTime; //type allows the representation of time
 	struct tm* timeFormatted; //structure the time into sec, min, hour...
@@ -162,13 +177,16 @@ string getTime(){
 	convert = convert.substr(0, convert.size()-1); // removes the /n from the string 
 	return convert;
 }
+//write strring to the log file
 void log(string x){
 	logfile << getTime() +" "+ x +"\n";
 }
 void toggleLock(){
 	log("INFO: Opening/Closing door.");
+	//Spin the motor for one second
 	relaySetChannel(relayAddress, 0, 1);
 	sleep(1);
 	relaySetChannel(relayAddress, 0, 0);
+	//change locked state
 	locked = !locked;
 }
