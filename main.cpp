@@ -15,8 +15,10 @@ const int ticrate = 40;
 const int passwordtime = 2;
 const int relayAddress = 7;	
 const int passworderrorthreshold = 15;
-int p1,p2,p3;
-
+int p1;
+int p2;
+int p3;
+int switchpin;
 bool inputpassword[ticrate*passwordtime+1];
 
 bool passwords[3][ticrate*passwordtime+1];
@@ -31,6 +33,7 @@ void savenewpassword(int readpin, int userid);
 int geterror(int userid);
 void readPassword();
 void toggleLock();
+void savepaswordstofile();
 string getTime();
 void log(string x);
 int main(int argc, char **argv, char **envp){		
@@ -44,6 +47,7 @@ int main(int argc, char **argv, char **envp){
 	p1 = 0; // pin 3 button 1
 	p2 = 1; // pin 1 button 2
 	p3 = 8; // pin 5 button 3
+	switchpin = 18;
 	//read realpassword from file
 	readPassword();
 	//SETUP PINS-----------------------------
@@ -57,6 +61,7 @@ int main(int argc, char **argv, char **envp){
 	gpio_request(p1,NULL);
 	gpio_request(p2,NULL);
 	gpio_request(p3,NULL);
+	gpio_request(switchpin,NULL);
 
 
 	//set pin directions to input or output
@@ -64,6 +69,7 @@ int main(int argc, char **argv, char **envp){
 	gpio_direction_input(p1);
 	gpio_direction_input(p2);
 	gpio_direction_input(p3);
+	gpio_direction_input(switchpin);
 	gpio_direction_output(gpiowrite,0);
 
 
@@ -71,6 +77,10 @@ int main(int argc, char **argv, char **envp){
 	//MAIN LOOP-----------------------------
 	while(true){
 		//check if there are any knocks
+		if(gpio_get_value(switchpin)){
+			savepaswordstofile();
+			return 0;
+		}
 		if(gpio_get_value(p1)){
 			cout << "Button 1 boiiii\n";
 			savenewpassword(gpioread,0);
@@ -114,6 +124,7 @@ int main(int argc, char **argv, char **envp){
 	gpio_free(p1);
 	gpio_free(p2);
 	gpio_free(p3);
+	gpio_free(switchpin);
 	gpio_free(gpioread);
 	gpio_free(gpiowrite);
 
@@ -219,6 +230,27 @@ void readPassword(){
 	}
 	passFile.close();
 	log(line);
+}
+void savepaswordstofile(){
+	int tics = ticrate*passwordtime;
+	int maxLineLength = ticrate*passwordtime;
+	int index = 0;
+	char newPassword[maxLineLength];	
+
+	ofstream newPassFile;
+	newPassFile.open("newPassword.txt");
+	if(!newPassFile.is_open()){
+		//log
+	}
+	
+	for(int i=0; i<3; i++){
+		for(int j=0; j<tics; j++){
+			newPassFile << passwords[i][j];
+		}
+		newPassFile << "\n";
+	}
+	
+	newPassFile.close();
 }
 //getTime function for the log file
 string getTime(){
