@@ -188,6 +188,7 @@ void getpassword(int readpin){
 }
 
 void savenewpassword(int readpin, int userid){
+	relaySetChannel(relayAddress, 1, 1);
 	while(!gpio_get_value(readpin)){
 		usleep(1000000/ticrate);
 	}
@@ -195,6 +196,13 @@ void savenewpassword(int readpin, int userid){
 	for(int i = 0 ; i<ticrate*passwordtime; i++){
 		passwords[userid][i] = inputpassword[i];
 	}
+	for(int i=0; i<3; i++){
+		relaySetChannel(relayAddress, 1, 0);
+		usleep(250000);
+		relaySetChannel(relayAddress, 1, 1);
+		usleep(250000);
+	}
+	relaySetChannel(relayAddress, 1, 0);
 }
 //calculate error between inputted password and real password
 int geterror(int userid){
