@@ -14,11 +14,12 @@ using namespace std;
 const int ticrate = 40;
 const int passwordtime = 2;
 const int relayAddress = 7;	
-const int passworderrorthreshold = 15;
+const int passworderrorthreshold = (int)ticrate/8;
 int p1;
 int p2;
 int p3;
 int switchpin;
+int LEDpin;
 bool inputpassword[ticrate*passwordtime+1];
 
 bool passwords[3][ticrate*passwordtime+1];
@@ -221,15 +222,16 @@ void readPassword(){
 	string line;
 	ifstream passFile;
 	passFile.open(filename);
-	for(int usernum = 0; usernum > 3; usernum++){
+	for(int usernum = 0; usernum < 3; usernum++){
 		getline(passFile,line);
 		//read realpassword from newPasword.txt (file created from savepassword.cpp) and save it into realpassword array
 		for(int i=0; i<maxLineLength; i++){
 			passwords[usernum][i] = (bool)(line.at(i)-48);
 		}
+		log(line);
 	}
 	passFile.close();
-	log(line);
+
 }
 void savepaswordstofile(){
 	int tics = ticrate*passwordtime;
