@@ -9,22 +9,26 @@
 #include <fstream>
 #include <string.h>
 #include <string>
-
 using namespace std;
 //GLOBAL VARIABLES-------------------------
 const int ticrate = 40;
 const int passwordtime = 2;
 const int relayAddress = 7;	
 const int passworderrorthreshold = 15;
+int p1,p2,p3;
+
 bool inputpassword[ticrate*passwordtime+1];
-bool realpassword[ticrate*passwordtime+1];
+
+bool passwords[3][ticrate*passwordtime+1];
+//bool realpassword[ticrate*passwordtime+1];
 ofstream logfile;
 bool locked;
 //FUNCTION SIGNATURES------------------------
-void check(int readpin);
+int check(int readpin);
 void checkForOnes(int readpin);
 void getpassword(int readpin);
-int geterror();
+void savenewpassword(int readpin, int userid);
+int geterror(int userid);
 void readPassword();
 void toggleLock();
 string getTime();
@@ -33,9 +37,13 @@ int main(int argc, char **argv, char **envp){
 	locked = true;
 	//start log file
 	logfile.open("logfile.txt");
+	log("Starting program");
 	//read input for pin numbers
 	int gpiowrite = atoi(argv[1]);
 	int gpioread = atoi(argv[2]);
+	p1 = 0; // pin 3 button 1
+	p2 = 1; // pin 1 button 2
+	p3 = 8; // pin 5 button 3
 	//read realpassword from file
 	readPassword();
 	//SETUP PINS-----------------------------
@@ -46,9 +54,16 @@ int main(int argc, char **argv, char **envp){
 	//request pins to be used
 	gpio_request(gpiowrite, NULL);
 	gpio_request(gpioread, NULL);
+	gpio_request(p1,NULL);
+	gpio_request(p2,NULL);
+	gpio_request(p3,NULL);
+
 
 	//set pin directions to input or output
 	gpio_direction_input(gpioread);
+	gpio_direction_input(p1);
+	gpio_direction_input(p2);
+	gpio_direction_input(p3);
 	gpio_direction_output(gpiowrite,0);
 
 
@@ -56,19 +71,35 @@ int main(int argc, char **argv, char **envp){
 	//MAIN LOOP-----------------------------
 	while(true){
 		//check if there are any knocks
-		if(gpio_get_value(gpioread)){
+		if(gpio_get_value(p1)){
+			cout << "Button 1 boiiii\n";
+			savenewpassword(gpioread,0);
+		}
+		else if(gpio_get_value(p2)){
+			cout << "Button too boiiii\n";	
+			savenewpassword(gpioread,1);		
+		}
+		else if(gpio_get_value(p3)){
+			cout << "Button III boiiii\n";
+			savenewpassword(gpioread,2);			
+		}
+		else if(gpio_get_value(gpioread)){
+			cout << "starting to record the inputie boii\n";
 			//if knocks detetected, and door is locked, check if knock pattern matches
 			if(locked){
 					log("INFO: Starting to record user input.");				
-					check(gpioread);
+					int userthatjustopenedthedoor = check(gpioread);
 					string inputie = "INFO: Recorded Input: ";
 					for(int i = 0; i<ticrate*passwordtime; i++){
 						if(inputpassword[i]){
 							inputie += "1";
-						}else{inputie+="0";}
-					}
-					cout << inputie;
-					log(inputie);			
+						}
+						else{
+							inputie+="0";
+						}
+					}					
+					log(inputie);	
+					cout << inputie << endl;		
 			}
 			//if door is unlocked, then check if pressure is held for 2 seconds
 			else{
@@ -80,6 +111,9 @@ int main(int argc, char **argv, char **envp){
 		usleep(1000000/ticrate);
 	}
 	//FREE PINS AND CLOSE FILES------------
+	gpio_free(p1);
+	gpio_free(p2);
+	gpio_free(p3);
 	gpio_free(gpioread);
 	gpio_free(gpiowrite);
 
@@ -87,27 +121,34 @@ int main(int argc, char **argv, char **envp){
 }
 
 //check if password is right
-void check(int readpin){
+int check(int readpin){
+	log("Calling check()");
 	//read knock pattern into inputpassword array
 	getpassword(readpin);
 	//calculate error amount between realpassword and inputpassword
-	int val = geterror();
-	string valstr = to_string(val);	
-	log("INFO: erorr value: " + valstr);
-	//check if error value is low enough to be considered same knocking pattern
-	if(val <= passworderrorthreshold){
-		log("INFO: Password matched.");
-		//toggle the door lock if pattern matches
-		toggleLock();
-	}
-	else{
-		log("INFO: Password does not match.");
+	for(int user = 0; user < 3; user++){
+		int val = geterror(user);
+		string valstr = to_string(val);	
+		cout << "Erorr valuie for user#"<< user << ": " << valstr << " boiii\n";
+		log("INFO: erorr value: " + valstr);
+		//check if error value is low enough to be considered same knocking pattern
+		if(val <= passworderrorthreshold){
+			log("INFO: Password matched.");
+			//toggle the door lock if pattern matches
+			toggleLock();
+			return user;
+
+		}
+		else{
+			log("INFO: Password does not match.");
+		}
 	}
 	
 
 }
 //checking if pressure sensor is held down for 2 seconds
 void checkForOnes(int readpin){
+	log("Checking to see if user wants to lock the door");
 	bool shouldLock = true;
 	getpassword(readpin);
 	for(int i=0; i<(ticrate*passwordtime) && shouldLock; i++){
@@ -134,14 +175,24 @@ void getpassword(int readpin){
 	}
 }
 
+void savenewpassword(int readpin, int userid){
+	while(!gpio_get_value(readpin)){
+		usleep(1000000/ticrate);
+	}
+	getpassword(readpin);
+	for(int i = 0 ; i<ticrate*passwordtime; i++){
+		passwords[userid][i] = inputpassword[i];
+	}
+}
 //calculate error between inputted password and real password
-int geterror(){
+int geterror(int userid){
+	log("Calling geterror()");
 	int tics = ticrate*passwordtime;
 	int error = 0;
 	int index = 0;
 	//error is calulated as sum of indexes that dont match between inputpassword and realpassword
 	while(index < tics){
-		if (inputpassword[index] != realpassword[index]){
+		if (inputpassword[index] != passwords[userid][index]){
 			error++;
 		}
 		index++;
@@ -152,18 +203,20 @@ int geterror(){
 
 //get the real password from the file
 void readPassword(){
+	log("Calling readPassword()");
 	bool done = false;
 	char filename[] = {"newPassword.txt"};
 	int maxLineLength = ticrate*passwordtime;
 	string line;
 	ifstream passFile;
 	passFile.open(filename);
-	getline(passFile,line);
-	//read realpassword from newPasword.txt (file created from savepassword.cpp) and save it into realpassword array
-	for(int i=0; i<maxLineLength; i++){
-		realpassword[i] = (bool)(line.at(i)-48);
+	for(int usernum = 0; usernum > 3; usernum++){
+		getline(passFile,line);
+		//read realpassword from newPasword.txt (file created from savepassword.cpp) and save it into realpassword array
+		for(int i=0; i<maxLineLength; i++){
+			passwords[usernum][i] = (bool)(line.at(i)-48);
+		}
 	}
-		
 	passFile.close();
 	log(line);
 }
