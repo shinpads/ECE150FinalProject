@@ -43,7 +43,7 @@ int main(int argc, char **argv, char **envp){
 	logfile.open("logfile.txt");
 	log("Starting program");
 	//read input for pin numbers
-	gpioread = 3;
+	int gpioread = 3;
 	p1 = 0; // pin 3 button 1
 	p2 = 1; // pin 1 button 2
 	p3 = 8; // pin 5 button 3
