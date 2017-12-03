@@ -14,7 +14,7 @@ using namespace std;
 const int ticrate = 40;
 const int passwordtime = 2;
 const int relayAddress = 7;	
-const int passworderrorthreshold = (int)ticrate/8;
+const int passworderrorthreshold = 10;
 int p1;
 int p2;
 int p3;
@@ -25,6 +25,7 @@ bool inputpassword[ticrate*passwordtime+1];
 bool passwords[3][ticrate*passwordtime+1];
 //bool realpassword[ticrate*passwordtime+1];
 ofstream logfile;
+ofstream enterlog;
 bool locked;
 //FUNCTION SIGNATURES------------------------
 int check(int readpin);
@@ -41,6 +42,7 @@ int main(int argc, char **argv, char **envp){
 	locked = true;
 	//start log file
 	logfile.open("logfile.txt");
+	enterlog.open("enterlog.txt");
 	log("Starting program");
 	//read input for pin numbers
 	int gpioread = 3;
@@ -77,21 +79,27 @@ int main(int argc, char **argv, char **envp){
 	//MAIN LOOP-----------------------------
 	while(true){
 		//check if there are any knocks
+
 		if(gpio_get_value(switchpin)){
 			savepaswordstofile();
 			return 0;
 		}
-		if(gpio_get_value(p1)){
-			cout << "Button 1 boiiii\n";
-			savenewpassword(gpioread,0);
-		}
-		else if(gpio_get_value(p2)){
-			cout << "Button too boiiii\n";	
-			savenewpassword(gpioread,1);		
-		}
-		else if(gpio_get_value(p3)){
-			cout << "Button III boiiii\n";
-			savenewpassword(gpioread,2);			
+		if(!locked){
+			if(gpio_get_value(p1)){
+				cout << "Button 1 boiiii\n";
+				savenewpassword(gpioread,0);
+				continue;
+			}
+			else if(gpio_get_value(p2)){
+				cout << "Button too boiiii\n";	
+				savenewpassword(gpioread,1);
+				continue;		
+			}
+			else if(gpio_get_value(p3)){
+				cout << "Button III boiiii\n";
+				savenewpassword(gpioread,2);
+				continue;			
+			}
 		}
 		else if(gpio_get_value(gpioread)){
 			cout << "starting to record the inputie boii\n";
@@ -99,6 +107,7 @@ int main(int argc, char **argv, char **envp){
 			if(locked){
 					log("INFO: Starting to record user input.");				
 					int userthatjustopenedthedoor = check(gpioread);
+					enterlog << "User #" << userthatjustopenedthedoor << " Has just unlocked the door at: "<<  getTime() << "\n"; 
 					string inputie = "INFO: Recorded Input: ";
 					for(int i = 0; i<ticrate*passwordtime; i++){
 						if(inputpassword[i]){
@@ -199,9 +208,9 @@ void savenewpassword(int readpin, int userid){
 	}
 	for(int i=0; i<3; i++){
 		relaySetChannel(relayAddress, 1, 0);
-		usleep(250000);
+		usleep(150000);
 		relaySetChannel(relayAddress, 1, 1);
-		usleep(250000);
+		usleep(150000);
 	}
 	relaySetChannel(relayAddress, 1, 0);
 }
