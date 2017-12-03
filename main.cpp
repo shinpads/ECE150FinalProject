@@ -43,8 +43,7 @@ int main(int argc, char **argv, char **envp){
 	logfile.open("logfile.txt");
 	log("Starting program");
 	//read input for pin numbers
-	int gpiowrite = atoi(argv[1]);
-	int gpioread = atoi(argv[2]);
+	gpioread = 3;
 	p1 = 0; // pin 3 button 1
 	p2 = 1; // pin 1 button 2
 	p3 = 8; // pin 5 button 3
@@ -57,7 +56,7 @@ int main(int argc, char **argv, char **envp){
 	relayDriverInit(relayAddress);
 
 	//request pins to be used
-	gpio_request(gpiowrite, NULL);
+
 	gpio_request(gpioread, NULL);
 	gpio_request(p1,NULL);
 	gpio_request(p2,NULL);
@@ -71,7 +70,7 @@ int main(int argc, char **argv, char **envp){
 	gpio_direction_input(p2);
 	gpio_direction_input(p3);
 	gpio_direction_input(switchpin);
-	gpio_direction_output(gpiowrite,0);
+
 
 
 
@@ -127,7 +126,7 @@ int main(int argc, char **argv, char **envp){
 	gpio_free(p3);
 	gpio_free(switchpin);
 	gpio_free(gpioread);
-	gpio_free(gpiowrite);
+
 
 	return 0;
 }
@@ -176,6 +175,7 @@ void checkForOnes(int readpin){
 
 //retreive password from pressure sensor
 void getpassword(int readpin){
+	log("Calling getpassord() function to record user input");
 	int tics = ticrate*passwordtime;
 	int index = 0;
 	//read pressure sensor for 2 seconds at a rate of ticrate
@@ -188,6 +188,7 @@ void getpassword(int readpin){
 }
 
 void savenewpassword(int readpin, int userid){
+	log("Calling savenewpassword() function to update a users password");
 	relaySetChannel(relayAddress, 1, 1);
 	while(!gpio_get_value(readpin)){
 		usleep(1000000/ticrate);
@@ -242,6 +243,7 @@ void readPassword(){
 
 }
 void savepaswordstofile(){
+	log("Calling savepaswordtofile() function");
 	int tics = ticrate*passwordtime;
 	int maxLineLength = ticrate*passwordtime;
 	int index = 0;
